@@ -2,9 +2,14 @@ const colorDivs = document.querySelectorAll('.color');
 const generateBtn = document.querySelector('.generate');
 const sliders = document.querySelectorAll('input[type="range"]')
 const currentHexes = document.querySelectorAll('.color h2')
+const popup = document.querySelector('.copy-container');
+const adjustButton = document.querySelectorAll('.adjust');
+const lockButton = document.querySelectorAll('.lock');
+const closeAdjustments = document.querySelectorAll('.close-adjustment')
+const sliderContainers = document.querySelectorAll('.sliders')
 let initaialColors;
 
-
+generateBtn.addEventListener('click', randomColors);
 sliders.forEach((slider) => {
     slider.addEventListener('input', hslControls);
 })
@@ -15,11 +20,39 @@ colorDivs.forEach((div, index) => {
     })
 })
 
+currentHexes.forEach(hex => {
+    hex.addEventListener('click', () => {
+        copyToClipboard(hex);
+    })
+})
+popup.addEventListener('transitionend', () => {
+    const popupBox = popup.children[0];
+    popupBox.classList.remove('active');
+    popup.classList.remove('active');
+})
 
 function generateHex(){
     const hexColor = chroma.random();
     return hexColor;
 }
+
+adjustButton.forEach((button, index) => {
+    button.addEventListener('click', () => {
+        openAdjustmentPanel(index);
+    })
+})
+
+lockButton.forEach((button, index) => {
+    button.addEventListener("click", e => {
+      lockLayer(e, index);
+    });
+  });
+
+closeAdjustments.forEach((button, index) => {
+    button.addEventListener('click', () => {
+        closeAdjustmentPanel(index);
+    })
+})
 
 function randomColors(){
     initaialColors = [];
@@ -27,7 +60,13 @@ function randomColors(){
         const hexText = div.children[0];
         const randomColor = generateHex();
 
-        initaialColors.push(chroma(randomColor).hex());
+        if (div.classList.contains('locked')){
+            initaialColors.push(hexText.innerText);
+            return;
+        }
+        else {
+            initaialColors.push(chroma(randomColor).hex());
+        }
 
         div.style.backgroundColor = randomColor;
         hexText.innerText = randomColor;
@@ -41,6 +80,10 @@ function randomColors(){
         colorizeSliders(color, hue, brightness, saturation);
     });
     resetInputs();
+    adjustButton.forEach((button, index) => {
+        checkTextContrast(initaialColors[index], button);
+        checkTextContrast(initaialColors[index], lockButton[index])
+    })
 }
 
 function checkTextContrast(color, text){
@@ -81,6 +124,7 @@ function hslControls(e){
 
     let color = chroma(bgColor).set('hsl.s', saturation.value).set('hsl.l', brightness.value).set('hsl.h', hue.value);
     colorDivs[index].style.backgroundColor = color;
+    colorizeSliders(color, hue, brightness, saturation);
 }
 
 function updateTextUI(index){
@@ -103,7 +147,49 @@ function resetInputs(){
             const hueValue = chroma(hueColor).hsl()[0];
             slider.value = Math.floor(hueValue);
         }
+        if (slider.name === 'brightness'){
+            const brightColor = initaialColors[slider.getAttribute('data-bright')];
+            const brightValue = chroma(brightColor).hsl()[2];
+            slider.value = Math.floor(brightValue * 100) / 100;
+        }
+        if (slider.name === 'saturation'){
+            const satColor = initaialColors[slider.getAttribute('data-sat')];
+            const satValue = chroma(satColor).hsl()[1];
+            slider.value = Math.floor(satValue * 100) / 100;
+        }
     })
+}
+
+function copyToClipboard(hex){
+    const el = document.createElement('textarea');
+    el.value = hex.innerText;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    const popupBox = popup.children[0];
+    popup.classList.add('active');
+    popupBox.classList.add('active');
+}
+
+function openAdjustmentPanel(index){
+    sliderContainers[index].classList.toggle('active');
+}
+
+function closeAdjustmentPanel(index){
+    sliderContainers[index].classList.remove('active');
+}
+
+function lockLayer(e, index) {
+    const lockSVG = e.target.children[0];
+    const activeBg = colorDivs[index];
+    activeBg.classList.toggle("locked");
+  
+    if (lockSVG.classList.contains("fa-lock-open")) {
+      e.target.innerHTML = '<i class="fas fa-lock"></i>';
+    } else {
+      e.target.innerHTML = '<i class="fas fa-lock-open"></i>';
+    }
 }
 
 randomColors();
